@@ -30,17 +30,51 @@ class CanvasView {
     }
 
     render(gameState) {
-        this.clear(); // Очищаем старый кадр
+        this.clear();
 
         if (!gameState || !gameState.nodes) return;
 
-        // Светло-серый цвет для комфортного отображения нейтральных узлов[cite: 1]
-        this.ctx.fillStyle = '#F8FAFC'; 
+        // --- НОВЫЙ БЛОК: Отрисовка топологии сети ---
+        // Задаем цвет ребер графа (чуть светлее фона для контраста)
+        this.ctx.strokeStyle = '#1E293B'; 
+        this.ctx.lineWidth = 2;
+
+        // 1. Рисуем орбитальное кольцо (соединяем узлы с 1 по 6)[cite: 1]
+        this.ctx.beginPath();
+        for (let i = 1; i < gameState.nodes.length; i++) {
+            const { x, y } = this.getCartesian(gameState.nodes[i].radius, gameState.nodes[i].angle);
+            if (i === 1) {
+                this.ctx.moveTo(x, y); // Ставим кисть на первый узел
+            } else {
+                this.ctx.lineTo(x, y); // Ведем линию к следующим
+            }
+        }
+        this.ctx.closePath(); // Замыкаем кольцо от последнего узла обратно к первому
+        this.ctx.stroke(); // Отрисовываем контур
+
+        // 2. Рисуем лучи от центрального Core Server к орбите[cite: 1]
+        const core = gameState.nodes[0];
+        const { x: cx, y: cy } = this.getCartesian(core.radius, core.angle);
+        
+        this.ctx.beginPath();
+        for (let i = 1; i < gameState.nodes.length; i++) {
+            const { x, y } = this.getCartesian(gameState.nodes[i].radius, gameState.nodes[i].angle);
+            this.ctx.moveTo(cx, cy); // Возвращаемся в центр
+            this.ctx.lineTo(x, y);   // Проводим луч к узлу
+        }
+        this.ctx.stroke();
 
         for (const node of gameState.nodes) {
-            // Получаем x и y с помощью нашего нового метода
             const { x, y } = this.getCartesian(node.radius, node.angle);
             
+            if (node.owner === 'player1') {
+                this.ctx.fillStyle = '#4F46E5'; // Индиго (наш игрок)
+            } else if (node.owner === 'player2') {
+                this.ctx.fillStyle = '#E11D48'; // Коралловый (соперник)
+            } else {
+                this.ctx.fillStyle = '#F8FAFC'; // Светло-серый (нейтральный)
+            }
+
             this.ctx.beginPath();
             this.ctx.arc(x, y, 10, 0, Math.PI * 2); 
             this.ctx.fill();

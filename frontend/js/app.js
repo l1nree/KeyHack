@@ -9,9 +9,16 @@ const canvasView = new CanvasView('gameCanvas');
 function handleStateReceived(newState) {
     gameModel.updateState(newState);
     
-    canvasView.render(gameModel.state); 
+
 }
 
 const client = new MockClient(handleStateReceived);
 
 client.connect();
+
+function gameLoop() {
+    canvasView.render(gameModel.state);
+    requestAnimationFrame(gameLoop);
+}
+
+requestAnimationFrame(gameLoop);
