@@ -1,39 +1,46 @@
 import aiosqlite
 import redis.asyncio as redis
 from typing import Optional
+import logging
 
-# Глобальные переменные для хранения соединений
+# Инициализация логгера для этого файла
+logger = logging.getLogger(__name__)
+
 sqlite_conn: Optional[aiosqlite.Connection] = None
 redis_client: Optional[redis.Redis] = None
 
 async def connect_dbs():
     global sqlite_conn, redis_client
     
-    # Подключаемся к SQLite (создаст файл keyhack.db, если его нет)
     sqlite_conn = await aiosqlite.connect("keyhack.db")
-    print("Успешно подключено к SQLite (keyhack.db)")
-
-    # Подключаемся к локальному Redis
-    redis_client = redis.from_url("redis://localhost:6379", decode_responses=True)
     
-    # Пингуем Redis для проверки соединения
+    # Инициализация структуры БД
+    await sqlite_conn.execute("""
+        CREATE TABLE IF NOT EXISTS players (
+            id TEXT PRIMARY KEY,
+            nickname TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    await sqlite_conn.commit()
+    
+    logger.info("Успешно подключено к SQLite (keyhack.db) и проверена структура")
+
+    redis_client = redis.from_url("redis://localhost:6379", decode_responses=True)
     await redis_client.ping()
-    print("Успешно подключено к Redis")
+    logger.info("Успешно подключено к Redis")
 
 async def close_dbs():
     global sqlite_conn, redis_client
     
-    # Закрываем SQLite
     if sqlite_conn:
         await sqlite_conn.close()
-        print("Соединение с SQLite закрыто")
+        logger.info("Соединение с SQLite закрыто")
 
-    # Закрываем Redis
     if redis_client:
         await redis_client.close()
-        print("Соединение с Redis закрыто")
+        logger.info("Соединение с Redis закрыто")
 
-# Функции-хелперы для использования в других частях приложения
 def get_sqlite() -> aiosqlite.Connection:
     if sqlite_conn is None:
         raise Exception("SQLite не инициализирована")

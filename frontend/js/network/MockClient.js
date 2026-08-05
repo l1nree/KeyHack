@@ -16,10 +16,9 @@ class MockClient {
         }
     }
 
-    generateInitialState() {
-        const nodes = [];
-        // Центральный Core Server
-        nodes.push({ id: 0, radius: 0, angle: 0, owner: 'neutral' });
+  generateInitialState() {
+    const nodes = [];
+    nodes.push({ id: 0, radius: 0, angle: 0, owner: "neutral" });
 
         const orbits = 3; // Количество концентрических колец
         const baseRadius = 80; // Расстояние (шаг) между кольцами

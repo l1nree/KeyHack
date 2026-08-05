@@ -1,18 +1,23 @@
 class UIView {
-    constructor() {
-        this.playerDashboard = document.querySelector('.player-dashboard');
-        this.ipBlock = document.querySelector('.code-block');
+  constructor() {
+    this.playerDashboard = document.querySelector(".player-dashboard");
+    this.ipBlock = document.querySelector(".code-block");
 
-        this.hackModal = document.getElementById('hack-modal');
-        this.targetNodeIdSpan = document.getElementById('target-node-id');
-        this.cancelBtn = document.getElementById('cancel-hack-btn');
-        
-        // Находим параграф с описанием и поле ввода внутри модального окна
-        this.taskDescription = this.hackModal.querySelector('p');
-        this.hackInput = document.getElementById('hack-input');
+    this.hackModal = document.getElementById("hack-modal");
+    this.targetNodeIdSpan = document.getElementById("target-node-id");
+    this.cancelBtn = document.getElementById("cancel-hack-btn");
 
-        this.cancelBtn.addEventListener('click', () => this.hideHackModal());
+    // Находим параграф с описанием и поле ввода внутри модального окна
+    // Защита от null
+    if (this.hackModal) {
+      this.taskDescription = this.hackModal.querySelector("p");
     }
+    this.hackInput = document.getElementById("hack-input");
+
+    if (this.cancelBtn) {
+      this.cancelBtn.addEventListener("click", () => this.hideHackModal());
+    }
+  }
 
     updateDashboard(playerIp) {
         this.ipBlock.textContent = `IP: ${playerIp}`;
