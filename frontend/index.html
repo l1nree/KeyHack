@@ -3,103 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <title>Война серверов: Битва за узлы</title>
-
-    <!-- Заглушка для favicon, чтобы избежать ошибки 404 в консоли -->
     <link rel="icon" href="data:,">
-
-    <!-- Подключаем шрифты из дизайн-системы: Inter (UI) и JetBrains Mono (Код) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-
-    <!-- Подключаем наш файл стилей (Modern FinTech Dashboard) -->
     <link rel="stylesheet" href="./css/style.css">
     
     <style>
-        /* Дополнительные стили для центрирования и оформления панелей в рамках Glassmorphism */
         .screen-container {
-            position: absolute;
-            top: 50%;
-            left: 50%;
+            position: absolute; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            width: 400px;
-            text-align: center;
+            width: 400px; text-align: center;
         }
-
         .glass-input {
-            width: 100%;
-            padding: 12px;
-            margin: 20px 0;
-            box-sizing: border-box;
-            background: rgba(0,0,0,0.5);
-            border: 1px solid var(--color-primary, #00ffcc);
-            color: white;
-            font-family: 'JetBrains Mono', monospace;
-            border-radius: 4px;
-            outline: none;
+            width: 100%; padding: 12px; margin: 20px 0; box-sizing: border-box;
+            background: rgba(0,0,0,0.5); border: 1px solid var(--color-primary, #00ffcc);
+            color: white; font-family: 'JetBrains Mono', monospace; border-radius: 4px; outline: none;
         }
-        
-        .glass-input:focus {
-            box-shadow: 0 0 10px rgba(0, 255, 204, 0.5);
-        }
-
+        .glass-input:focus { box-shadow: 0 0 10px rgba(0, 255, 204, 0.5); }
         .glass-btn {
-            width: 100%;
-            padding: 12px 20px;
-            background: rgba(0, 255, 204, 0.1);
-            border: 1px solid var(--color-primary, #00ffcc);
-            color: var(--color-primary, #00ffcc);
-            font-family: 'Inter', sans-serif;
-            font-weight: 600;
-            cursor: pointer;
-            border-radius: 4px;
-            transition: all 0.3s ease;
+            width: 100%; padding: 12px 20px; background: rgba(0, 255, 204, 0.1);
+            border: 1px solid var(--color-primary, #00ffcc); color: var(--color-primary, #00ffcc);
+            font-family: 'Inter', sans-serif; font-weight: 600; cursor: pointer; border-radius: 4px; transition: all 0.3s;
         }
-
-        .glass-btn:hover {
-            background: rgba(0, 255, 204, 0.3);
-            box-shadow: 0 0 15px rgba(0, 255, 204, 0.4);
-        }
-
+        .glass-btn:hover { background: rgba(0, 255, 204, 0.3); box-shadow: 0 0 15px rgba(0, 255, 204, 0.4); }
         .status-ok { color: lime; }
-        .status-error { color: red; }
         .status-wait { color: yellow; }
-        
-        .logout-link {
-            display: inline-block;
-            margin-top: 15px;
-            color: #aaa;
-            font-size: 12px;
-            text-decoration: underline;
-            cursor: pointer;
-        }
+        .logout-link { display: inline-block; margin-top: 15px; color: #aaa; font-size: 12px; text-decoration: underline; cursor: pointer; }
         .logout-link:hover { color: white; }
     </style>
 </head>
 <body>
 
-    <!-- Слой 1: Наш холст с радиальной сеткой (находится на заднем плане) -->
     <canvas id="gameCanvas"></canvas>
 
-    <!-- Слой 2: Интерфейс Glassmorphism (парит поверх холста) -->
     <div id="ui-layer">
         
-        <!-- ЭКРАН 1: АВТОРИЗАЦИЯ / РЕГИСТРАЦИЯ -->
+        <!-- АВТОРИЗАЦИЯ -->
         <div id="auth-screen" class="glass-panel screen-container">
             <h2 style="color: var(--color-primary, #00ffcc);">СИСТЕМА ДОСТУПА</h2>
             <p>Установите идентификатор соединения.</p>
-            
             <input type="text" id="nickname-input" class="glass-input" placeholder="Введите позывной (никнейм)..." autocomplete="off" maxlength="16">
-            
             <button id="register-btn" class="glass-btn">ИНИЦИАЛИЗАЦИЯ</button>
         </div>
 
-        <!-- ЭКРАН 2: ГЛАВНОЕ МЕНЮ ИГРОКА (Изначально скрыто) -->
+        <!-- ГЛАВНОЕ МЕНЮ -->
         <div id="game-screen" class="glass-panel screen-container" style="display: none;">
             <h2>ТЕРМИНАЛ ОПЕРАТОРА</h2>
             
             <div style="text-align: left; margin: 20px 0;">
                 <p>Позывной: <strong id="player-name-display" style="color: var(--color-primary, #00ffcc);">Unknown</strong></p>
-                <div class="code-block" style="margin-top: 10px; font-size: 12px;">
+                <div class="code-block" style="margin-top: 10px; font-size: 12px; overflow-wrap: break-word;">
                     UID: <span id="player-id-display">...</span>
                 </div>
             </div>
@@ -107,30 +60,31 @@
             <p style="margin-bottom: 20px;">Связь с ядром: <span id="ws-status" class="status-wait">Ожидание...</span></p>
 
             <button id="pingBtn" class="glass-btn" style="margin-bottom: 10px;">Проверить канал (Ping)</button>
-            <button class="glass-btn" style="opacity: 0.5; cursor: not-allowed;">Подключиться к лобби (В разработке)</button>
+            
+            <!-- БЛОК ЛОББИ -->
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.2);">
+                <button id="create-lobby-btn" class="glass-btn" style="margin-bottom: 10px; background: rgba(0, 255, 204, 0.2);">СОЗДАТЬ СЕССИЮ</button>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="text" id="join-lobby-input" class="glass-input" style="margin: 0; text-transform: uppercase;" placeholder="КОД..." maxlength="4">
+                    <button id="join-lobby-btn" class="glass-btn" style="margin: 0;">ПОДКЛЮЧИТЬСЯ</button>
+                </div>
+            </div>
             
             <a id="logout-btn" class="logout-link">Очистить кэш (Выйти)</a>
         </div>
         
-        <!-- МОДАЛЬНОЕ ОКНО ВЗЛОМА (Скрыто до начала игры) -->
+        <!-- МОДАЛКА ВЗЛОМА -->
         <div id="hack-modal" class="glass-panel" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 400px; text-align: center;">
             <h2 style="color: var(--color-danger, #ff4444);">ВТОРЖЕНИЕ В УЗЕЛ <span id="target-node-id">0</span></h2>
             <p>Установите соединение для перехвата контроля.</p>
-            
-            <div class="code-block" style="margin: 20px 0;">
-                <span id="hack-timer">10.0</span> сек
-            </div>
-
+            <div class="code-block" style="margin: 20px 0;"><span id="hack-timer">10.0</span> сек</div>
             <input type="text" id="hack-input" class="glass-input" placeholder="Введите ключ..." style="margin-bottom: 5px;">
             <button id="cancel-hack-btn" class="glass-btn" style="background: transparent; color: var(--color-text); border-color: var(--color-text);">Отмена</button>
         </div>
 
     </div>
 
-    <!-- Подключаем главный скрипт как модуль (точка входа) -->
     <script type="module" src="./js/app.js"></script>
-    
-    <!-- Скрипт для кнопки "Выйти" (чтобы можно было сбросить профиль) -->
     <script>
         document.getElementById('logout-btn').addEventListener('click', () => {
             localStorage.clear();

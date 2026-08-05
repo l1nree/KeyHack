@@ -6,31 +6,30 @@ import InputController from "./controllers/InputController.js";
 import TaskGenerator from "./models/TaskGenerator.js";
 import { NetworkClient } from "./network/NetworkClient.js";
 
-// Ждем полной загрузки HTML, чтобы UIView и другие классы могли найти свои элементы в DOM
 document.addEventListener("DOMContentLoaded", () => {
-  // --- 1. Элементы UI экранов ---
+  // --- 1. Элементы UI ---
   const authScreen = document.getElementById("auth-screen");
   const gameScreen = document.getElementById("game-screen");
   const registerBtn = document.getElementById("register-btn");
   const nicknameInput = document.getElementById("nickname-input");
   const pingBtn = document.getElementById("pingBtn");
+
+  // Новые элементы управления лобби
+  const createLobbyBtn = document.getElementById("create-lobby-btn");
+  const joinLobbyBtn = document.getElementById("join-lobby-btn");
+  const joinLobbyInput = document.getElementById("join-lobby-input");
+
   const playerNameDisplay = document.getElementById("player-name-display");
   const playerIdDisplay = document.getElementById("player-id-display");
 
-  // --- 2. Инициализация игровой графики ---
-  // (Теперь они создаются после загрузки DOM, поэтому UIView не упадет с ошибкой null)
+  // --- 2. Инициализация игры (Графика) ---
   const gameModel = new GameReplica("player1");
   const canvasView = new CanvasView("gameCanvas");
-
-  // Если UIView все еще будет падать, проверьте, какие ID он ищет в UIView.js:14
-  // Убедитесь, что эти ID есть в вашем новом index.html (например, cancel-hack-btn)
   const uiView = new UIView();
-
   const taskGenerator = new TaskGenerator();
 
   const inputController = new InputController(canvasView, gameModel, (node) => {
     const task = taskGenerator.getTask("easy");
-    console.log(`Узел ${node.id} атакован! Задача:`, task);
     uiView.showHackModal(node, task);
   });
 
@@ -42,16 +41,19 @@ document.addEventListener("DOMContentLoaded", () => {
     canvasView.render(gameModel.state);
     requestAnimationFrame(gameLoop);
   }
-
-  // Запускаем отрисовку
   requestAnimationFrame(gameLoop);
 
-  // --- 3. Инициализация сетевого клиента ---
+  // --- 3. Инициализация сети ---
   const netClient = new NetworkClient("wss://keyhack.albov.net/ws");
 
   netClient.onMessage((data) => {
     if (data.type === "pong") {
       alert(data.payload.message);
+    } else if (data.type === "lobby_created") {
+      alert(
+        `Сессия успешно создана! Ваш КОД лобби: ${data.payload.lobby_code}`,
+      );
+      console.log("Данные лобби:", data.payload.lobby_data);
     }
   });
 
@@ -61,10 +63,16 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // --- 4. Инициализация локальной симуляции ---
+  // Обработка кнопки "Создать лобби"
+  if (createLobbyBtn) {
+    createLobbyBtn.addEventListener("click", () => {
+      netClient.sendAction("create_lobby", { max_players: 4 });
+    });
+  }
+
   const mockClient = new MockClient(handleStateReceived);
 
-  // --- 5. Логика авторизации ---
+  // --- 4. Авторизация ---
   const savedPlayerId = localStorage.getItem("keyhack_player_id");
   const savedNickname = localStorage.getItem("keyhack_nickname");
 
@@ -95,11 +103,10 @@ document.addEventListener("DOMContentLoaded", () => {
         localStorage.setItem("keyhack_nickname", data.nickname);
         showGameScreen(data.player_id, data.nickname);
       } else {
-        alert("Ошибка при регистрации. Возможно сервер недоступен.");
+        alert("Ошибка при регистрации.");
         resetAuthButton();
       }
     } catch (error) {
-      console.error("Ошибка сети:", error);
       alert("Не удалось подключиться к серверу");
       resetAuthButton();
     }
@@ -113,21 +120,14 @@ document.addEventListener("DOMContentLoaded", () => {
   function showGameScreen(playerId, nickname) {
     authScreen.style.display = "none";
     gameScreen.style.display = "block";
-
     playerNameDisplay.textContent = nickname;
     playerIdDisplay.textContent = playerId;
 
-    // Обновляем IP в Dashboard, если этот метод есть в вашем UIView
     try {
       uiView.updateDashboard("10.0.0.99");
-    } catch (e) {
-      console.warn("Метод updateDashboard не найден в UIView:", e);
-    }
+    } catch (e) {}
 
-    // Подключаемся к серверу
     netClient.connect(playerId);
-
-    // Запускаем локальную карту
     mockClient.connect();
   }
 });
