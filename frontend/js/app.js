@@ -5,8 +5,10 @@ import UIView from "./views/UIView.js";
 import InputController from "./controllers/InputController.js";
 import TaskGenerator from "./models/TaskGenerator.js";
 import { NetworkClient } from "./network/NetworkClient.js";
+import { DevTools } from "./DevTools.js"; // Импорт панели разработчика
 
 document.addEventListener("DOMContentLoaded", () => {
+  // --- 1. Элементы UI ---
   const authScreen = document.getElementById("auth-screen");
   const gameScreen = document.getElementById("game-screen");
   const lobbyScreen = document.getElementById("lobby-screen");
@@ -34,23 +36,28 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentPlayerId = null;
   let currentLobbyCode = null;
   let isPlayerReady = false;
-  let isGameActive = false; // <-- Переменная блокировки игры
+  let isGameActive = false; // Блокировка кликов
+  let isDevModeUnlocked = false; // Блокировка кликов для админа
 
+  // Перехватываем команду от панели разработчика
+  document.addEventListener("devModeActivateCanvas", () => {
+    isDevModeUnlocked = true;
+  });
+
+  // --- 2. Инициализация игры ---
   const gameModel = new GameReplica("player1");
   const canvasView = new CanvasView("gameCanvas");
   const uiView = new UIView();
   const taskGenerator = new TaskGenerator();
 
   const inputController = new InputController(canvasView, gameModel, (node) => {
-    // Блокируем клики по холсту, если матч еще не стартовал
-    if (!isGameActive) {
+    // Разрешаем клики либо если игра онлайн стартовала, либо если админ нажал "Показать холст"
+    if (!isGameActive && !isDevModeUnlocked) {
       console.log("Ожидание старта матча...");
       return;
     }
 
-    console.log(`app.js принял сигнал! Узел: ${node.id}`);
-    // Используем Caesar по умолчанию или выбирайте логику сами
-    const task = taskGenerator.getTask("caesar");
+    const task = taskGenerator.getTask("easy");
     uiView.showHackModal(node, task);
   });
 
@@ -66,9 +73,18 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   requestAnimationFrame(gameLoop);
 
+  // --- 3. Инициализация сети ---
   const netClient = new NetworkClient("wss://keyhack.albov.net/ws");
+  const mockClient = new MockClient(handleStateReceived);
+
+  let devPanel = null; // Будет инициализирована, если юзер admin
 
   netClient.onMessage((data) => {
+    // Пишем все пакеты в консоль разработчика (если открыта)
+    if (devPanel) {
+      devPanel.log(`RECEIVE: ${data.type}`);
+    }
+
     if (data.type === "pong") {
       alert(data.payload.message);
     } else if (data.type === "lobby_update") {
@@ -116,37 +132,28 @@ document.addEventListener("DOMContentLoaded", () => {
       if (gameCanvas) {
         gameCanvas.style.display = "block";
       }
-      isGameActive = true; // РАЗБЛОКИРУЕМ ИГРУ
+      isGameActive = true;
       alert(data.payload.message);
     } else if (data.type === "error") {
       alert("Ошибка: " + data.payload.message);
     }
   });
 
-  if (pingBtn) {
+  if (pingBtn)
     pingBtn.addEventListener("click", () => {
       netClient.sendAction("ping", { test: "Сигнал от оператора" });
     });
-  }
-
-  if (createLobbyBtn) {
+  if (createLobbyBtn)
     createLobbyBtn.addEventListener("click", () => {
       netClient.sendAction("create_lobby", { max_players: 4 });
     });
-  }
-
-  if (joinLobbyBtn) {
+  if (joinLobbyBtn)
     joinLobbyBtn.addEventListener("click", () => {
       const code = joinLobbyInput.value.trim();
-      if (code.length !== 4) {
-        alert("Код лобби должен состоять из 4 символов");
-        return;
-      }
+      if (code.length !== 4) return;
       netClient.sendAction("join_lobby", { lobby_code: code });
     });
-  }
-
-  if (readyBtn) {
+  if (readyBtn)
     readyBtn.addEventListener("click", () => {
       if (!currentLobbyCode) return;
       netClient.sendAction("set_ready", {
@@ -154,16 +161,15 @@ document.addEventListener("DOMContentLoaded", () => {
         is_ready: !isPlayerReady,
       });
     });
-  }
 
-  const mockClient = new MockClient(handleStateReceived);
-
+  // --- 4. Авторизация ---
   const savedPlayerId = localStorage.getItem("keyhack_player_id");
   const savedNickname = localStorage.getItem("keyhack_nickname");
+  const savedIsAdmin = localStorage.getItem("keyhack_is_admin") === "true";
 
   if (savedPlayerId && savedNickname) {
     currentPlayerId = savedPlayerId;
-    showGameScreen(savedPlayerId, savedNickname);
+    showScreenBasedOnRole(savedPlayerId, savedNickname, savedIsAdmin);
   }
 
   if (registerBtn) {
@@ -185,8 +191,16 @@ document.addEventListener("DOMContentLoaded", () => {
           const data = await response.json();
           localStorage.setItem("keyhack_player_id", data.player_id);
           localStorage.setItem("keyhack_nickname", data.nickname);
+
+          // Сохраняем флаг админа
+          if (data.is_admin) {
+            localStorage.setItem("keyhack_is_admin", "true");
+          } else {
+            localStorage.removeItem("keyhack_is_admin");
+          }
+
           currentPlayerId = data.player_id;
-          showGameScreen(data.player_id, data.nickname);
+          showScreenBasedOnRole(data.player_id, data.nickname, data.is_admin);
         } else {
           alert("Ошибка при регистрации.");
           resetAuthButton();
@@ -205,18 +219,34 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function showGameScreen(playerId, nickname) {
+  // Маршрутизация экранов в зависимости от роли (Игрок или Админ)
+  function showScreenBasedOnRole(playerId, nickname, isAdmin) {
     if (authScreen) authScreen.style.display = "none";
-    if (gameScreen) gameScreen.style.display = "block";
-
-    if (playerNameDisplay) playerNameDisplay.textContent = nickname;
-    if (playerIdDisplay) playerIdDisplay.textContent = playerId;
-
-    try {
-      uiView.updateDashboard("10.0.0.99");
-    } catch (e) {}
 
     netClient.connect(playerId);
-    mockClient.connect();
+
+    if (isAdmin) {
+      // ДЛЯ АДМИНА: Обычные окна не показываются
+      if (gameScreen) gameScreen.style.display = "none";
+      if (lobbyScreen) lobbyScreen.style.display = "none";
+
+      // Инициализация розовой панели разработчика
+      devPanel = new DevTools(netClient, mockClient, gameCanvas);
+      devPanel.init();
+      devPanel.log(`ДОБРО ПОЖАЛОВАТЬ, ROOT. ID: ${playerId}`);
+    } else {
+      // ДЛЯ ИГРОКА: Обычный флоу
+      if (gameScreen) gameScreen.style.display = "block";
+
+      if (playerNameDisplay) playerNameDisplay.textContent = nickname;
+      if (playerIdDisplay) playerIdDisplay.textContent = playerId;
+
+      try {
+        uiView.updateDashboard("10.0.0.99");
+      } catch (e) {}
+
+      // Запускаем мок-сервер, но холст скрыт
+      mockClient.connect();
+    }
   }
 });
