@@ -1,15 +1,29 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from contextlib import asynccontextmanager
 import logging
+
+from database import connect_dbs, close_dbs
+
 
 # Включаем логирование
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Инициализация баз данных...")
+    await connect_dbs()
+    yield
+    logger.info("Закрытие соединений с базами данных...")
+    await close_dbs()
+
+app = FastAPI(lifespan=lifespan)
+
 
 @app.get("/")
 async def root():
     return {"status": "FastAPI Server is running!"}
+
 
 # Убедитесь, что здесь НЕТ слэша на конце!
 @app.websocket("/ws")
