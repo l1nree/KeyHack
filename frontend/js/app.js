@@ -7,10 +7,10 @@ import TaskGenerator from "./models/TaskGenerator.js";
 import { NetworkClient } from "./network/NetworkClient.js";
 
 document.addEventListener("DOMContentLoaded", () => {
-  // --- 1. Элементы UI ---
   const authScreen = document.getElementById("auth-screen");
   const gameScreen = document.getElementById("game-screen");
   const lobbyScreen = document.getElementById("lobby-screen");
+  const gameCanvas = document.getElementById("gameCanvas");
 
   const registerBtn = document.getElementById("register-btn");
   const nicknameInput = document.getElementById("nickname-input");
@@ -23,24 +23,34 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const playerNameDisplay = document.getElementById("player-name-display");
   const playerIdDisplay = document.getElementById("player-id-display");
-
   const lobbyCodeDisplay = document.getElementById("lobby-code-display");
   const lobbyCount = document.getElementById("lobby-count");
   const lobbyPlayersList = document.getElementById("lobby-players-list");
 
-  // Глобальные переменные сессии
+  if (gameCanvas) {
+    gameCanvas.style.display = "none";
+  }
+
   let currentPlayerId = null;
   let currentLobbyCode = null;
   let isPlayerReady = false;
+  let isGameActive = false; // <-- Переменная блокировки игры
 
-  // --- 2. Инициализация игры (Графика и Логика) ---
   const gameModel = new GameReplica("player1");
   const canvasView = new CanvasView("gameCanvas");
   const uiView = new UIView();
   const taskGenerator = new TaskGenerator();
 
   const inputController = new InputController(canvasView, gameModel, (node) => {
-    const task = taskGenerator.getTask("easy");
+    // Блокируем клики по холсту, если матч еще не стартовал
+    if (!isGameActive) {
+      console.log("Ожидание старта матча...");
+      return;
+    }
+
+    console.log(`app.js принял сигнал! Узел: ${node.id}`);
+    // Используем Caesar по умолчанию или выбирайте логику сами
+    const task = taskGenerator.getTask("caesar");
     uiView.showHackModal(node, task);
   });
 
@@ -49,12 +59,13 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function gameLoop() {
-    canvasView.render(gameModel.state);
+    if (gameCanvas && gameCanvas.style.display !== "none") {
+      canvasView.render(gameModel.state);
+    }
     requestAnimationFrame(gameLoop);
   }
   requestAnimationFrame(gameLoop);
 
-  // --- 3. Инициализация сети ---
   const netClient = new NetworkClient("wss://keyhack.albov.net/ws");
 
   netClient.onMessage((data) => {
@@ -68,47 +79,50 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (lobbyScreen) {
         lobbyScreen.style.display = "block";
-        lobbyCodeDisplay.textContent = currentLobbyCode;
+        if (lobbyCodeDisplay) lobbyCodeDisplay.textContent = currentLobbyCode;
 
         const players = Object.values(lobbyData.players);
-        lobbyCount.textContent = players.length;
+        if (lobbyCount) lobbyCount.textContent = players.length;
 
-        lobbyPlayersList.innerHTML = "";
-        players.forEach((p) => {
-          const statusColor = p.is_ready ? "lime" : "gray";
-          const statusText = p.is_ready ? "Готов" : "Ожидание";
+        if (lobbyPlayersList) {
+          lobbyPlayersList.innerHTML = "";
+          players.forEach((p) => {
+            const statusColor = p.is_ready ? "lime" : "gray";
+            const statusText = p.is_ready ? "Готов" : "Ожидание";
+            lobbyPlayersList.innerHTML += `
+                            <div class="player-list-item" style="background: rgba(255,255,255,0.1); padding: 10px; margin-bottom: 5px; border-radius: 4px; display: flex; justify-content: space-between;">
+                                <span>${p.nickname}</span>
+                                <span style="color: ${statusColor};">${statusText}</span>
+                            </div>
+                        `;
+          });
+        }
 
-          lobbyPlayersList.innerHTML += `
-                        <div class="player-list-item" style="background: rgba(255,255,255,0.1); padding: 10px; margin-bottom: 5px; border-radius: 4px; display: flex; justify-content: space-between;">
-                            <span>${p.nickname}</span>
-                            <span style="color: ${statusColor};">${statusText}</span>
-                        </div>
-                    `;
-        });
-
-        // Синхронизируем состояние кнопки готовности
         if (currentPlayerId && lobbyData.players[currentPlayerId]) {
           isPlayerReady = lobbyData.players[currentPlayerId].is_ready;
-          if (isPlayerReady) {
-            readyBtn.textContent = "ОТМЕНИТЬ ГОТОВНОСТЬ";
-            readyBtn.style.background = "rgba(0, 255, 0, 0.2)";
-          } else {
-            readyBtn.textContent = "ПОДТВЕРДИТЬ ГОТОВНОСТЬ";
-            readyBtn.style.background = "rgba(0, 255, 204, 0.1)";
+          if (readyBtn) {
+            if (isPlayerReady) {
+              readyBtn.textContent = "ОТМЕНИТЬ ГОТОВНОСТЬ";
+              readyBtn.style.background = "rgba(0, 255, 0, 0.2)";
+            } else {
+              readyBtn.textContent = "ПОДТВЕРДИТЬ ГОТОВНОСТЬ";
+              readyBtn.style.background = "rgba(0, 255, 204, 0.1)";
+            }
           }
         }
       }
     } else if (data.type === "match_start") {
-      // ИГРА НАЧАЛАСЬ
       if (lobbyScreen) lobbyScreen.style.display = "none";
+      if (gameCanvas) {
+        gameCanvas.style.display = "block";
+      }
+      isGameActive = true; // РАЗБЛОКИРУЕМ ИГРУ
       alert(data.payload.message);
-      // Тут мы открываем саму карту (она уже на фоне, так что мы просто убрали лишние меню)
     } else if (data.type === "error") {
       alert("Ошибка: " + data.payload.message);
     }
   });
 
-  // Обработка кнопок
   if (pingBtn) {
     pingBtn.addEventListener("click", () => {
       netClient.sendAction("ping", { test: "Сигнал от оператора" });
@@ -135,7 +149,6 @@ document.addEventListener("DOMContentLoaded", () => {
   if (readyBtn) {
     readyBtn.addEventListener("click", () => {
       if (!currentLobbyCode) return;
-      // Отправляем инвертированное состояние на сервер
       netClient.sendAction("set_ready", {
         lobby_code: currentLobbyCode,
         is_ready: !isPlayerReady,
@@ -145,7 +158,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const mockClient = new MockClient(handleStateReceived);
 
-  // --- 4. Авторизация ---
   const savedPlayerId = localStorage.getItem("keyhack_player_id");
   const savedNickname = localStorage.getItem("keyhack_nickname");
 
@@ -157,10 +169,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (registerBtn) {
     registerBtn.addEventListener("click", async () => {
       const nickname = nicknameInput.value.trim();
-      if (!nickname) {
-        alert("Введите позывной");
-        return;
-      }
+      if (!nickname) return;
 
       registerBtn.textContent = "ПОДКЛЮЧЕНИЕ...";
       registerBtn.disabled = true;
