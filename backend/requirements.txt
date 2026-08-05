@@ -1,2 +1,4 @@
 fastapi
 uvicorn[standard]
+redis>=5.0.1      # Для асинхронной работы с Redis
+aiosqlite>=0.20.0 # Для асинхронной работы с SQLite
