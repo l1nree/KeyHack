@@ -1,25 +1,48 @@
 class GameReplica {
     constructor(localPlayerId) {
-        // ID текущего клиента (строка или число), чтобы отличать свои узлы от чужих
-        this.localPlayerId = localPlayerId; 
+        this.localPlayerId = localPlayerId;
         
-        // Главный слепок игрового мира. Изначально пуст.
-        this.state = null; 
+        // Экономика игрока
+        this.coins = 150; 
+        
+        this.state = {
+            nodes: []
+        };
     }
 
-    updateState(newState) {
-        // Сервер прислал новый кадр симуляции — перезаписываем локальную копию
+    // Метод для инициализации или обновления состояния от сервера/клиента
+    setState(newState) {
         this.state = newState;
+        
+        this.state.nodes.forEach(node => {
+            if (node.defenseLevel === undefined) {
+                node.defenseLevel = 0; 
+            }
+        });
     }
 
-    getNodes() {
-        // Если state существует, возвращаем массив узлов. Иначе — пустой массив.
-        return this.state ? this.state.nodes : [];
+    // Добавляем метод-алиас, который ждет app.js
+    updateState(newState) {
+        this.setState(newState);
     }
-    
-    getMe() {
-        // Пример того, как мы можем достать данные именно нашего игрока
-        return this.state ? this.state.players[this.localPlayerId] : null;
+
+    // Проверка, хватает ли монет на покупку защиты
+    canAfford(amount) {
+        return this.coins >= amount;
+    }
+
+    // Потратить монеты
+    spendCoins(amount) {
+        if (this.canAfford(amount)) {
+            this.coins -= amount;
+            return true;
+        }
+        return false;
+    }
+
+    // Добавить монеты (пассивный доход или награда за захват)
+    addCoins(amount) {
+        this.coins += amount;
     }
 }
 
