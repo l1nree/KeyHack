@@ -19,17 +19,20 @@
             background: rgba(0,0,0,0.5); border: 1px solid var(--color-primary, #00ffcc);
             color: white; font-family: 'JetBrains Mono', monospace; border-radius: 4px; outline: none;
         }
-        .glass-input:focus { box-shadow: 0 0 10px rgba(0, 255, 204, 0.5); }
         .glass-btn {
             width: 100%; padding: 12px 20px; background: rgba(0, 255, 204, 0.1);
             border: 1px solid var(--color-primary, #00ffcc); color: var(--color-primary, #00ffcc);
             font-family: 'Inter', sans-serif; font-weight: 600; cursor: pointer; border-radius: 4px; transition: all 0.3s;
         }
-        .glass-btn:hover { background: rgba(0, 255, 204, 0.3); box-shadow: 0 0 15px rgba(0, 255, 204, 0.4); }
+        .glass-btn:hover { background: rgba(0, 255, 204, 0.3); }
         .status-ok { color: lime; }
         .status-wait { color: yellow; }
         .logout-link { display: inline-block; margin-top: 15px; color: #aaa; font-size: 12px; text-decoration: underline; cursor: pointer; }
-        .logout-link:hover { color: white; }
+        
+        .player-list-item {
+            background: rgba(255,255,255,0.1); padding: 10px; margin-bottom: 5px; border-radius: 4px;
+            display: flex; justify-content: space-between;
+        }
     </style>
 </head>
 <body>
@@ -38,15 +41,14 @@
 
     <div id="ui-layer">
         
-        <!-- АВТОРИЗАЦИЯ -->
+        <!-- ЭКРАН 1: АВТОРИЗАЦИЯ -->
         <div id="auth-screen" class="glass-panel screen-container">
             <h2 style="color: var(--color-primary, #00ffcc);">СИСТЕМА ДОСТУПА</h2>
-            <p>Установите идентификатор соединения.</p>
-            <input type="text" id="nickname-input" class="glass-input" placeholder="Введите позывной (никнейм)..." autocomplete="off" maxlength="16">
+            <input type="text" id="nickname-input" class="glass-input" placeholder="Введите позывной (никнейм)..." maxlength="16">
             <button id="register-btn" class="glass-btn">ИНИЦИАЛИЗАЦИЯ</button>
         </div>
 
-        <!-- ГЛАВНОЕ МЕНЮ -->
+        <!-- ЭКРАН 2: ГЛАВНОЕ МЕНЮ -->
         <div id="game-screen" class="glass-panel screen-container" style="display: none;">
             <h2>ТЕРМИНАЛ ОПЕРАТОРА</h2>
             
@@ -58,10 +60,7 @@
             </div>
 
             <p style="margin-bottom: 20px;">Связь с ядром: <span id="ws-status" class="status-wait">Ожидание...</span></p>
-
-            <button id="pingBtn" class="glass-btn" style="margin-bottom: 10px;">Проверить канал (Ping)</button>
             
-            <!-- БЛОК ЛОББИ -->
             <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.2);">
                 <button id="create-lobby-btn" class="glass-btn" style="margin-bottom: 10px; background: rgba(0, 255, 204, 0.2);">СОЗДАТЬ СЕССИЮ</button>
                 <div style="display: flex; gap: 10px; align-items: center;">
@@ -69,14 +68,26 @@
                     <button id="join-lobby-btn" class="glass-btn" style="margin: 0;">ПОДКЛЮЧИТЬСЯ</button>
                 </div>
             </div>
-            
             <a id="logout-btn" class="logout-link">Очистить кэш (Выйти)</a>
+        </div>
+
+        <!-- ЭКРАН 3: КОМНАТА ЛОББИ (НОВОЕ) -->
+        <div id="lobby-screen" class="glass-panel screen-container" style="display: none;">
+            <h2>СЕССИЯ: <span id="lobby-code-display" style="color: var(--color-primary);">XXXX</span></h2>
+            
+            <div style="margin: 20px 0; text-align: left;">
+                <p>Участники (<span id="lobby-count">1</span>/4):</p>
+                <div id="lobby-players-list" style="margin-top: 10px;">
+                    <!-- JS будет вставлять игроков сюда -->
+                </div>
+            </div>
+            
+            <button id="ready-btn" class="glass-btn" style="margin-bottom: 10px;">ПОДТВЕРДИТЬ ГОТОВНОСТЬ</button>
         </div>
         
         <!-- МОДАЛКА ВЗЛОМА -->
         <div id="hack-modal" class="glass-panel" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 400px; text-align: center;">
             <h2 style="color: var(--color-danger, #ff4444);">ВТОРЖЕНИЕ В УЗЕЛ <span id="target-node-id">0</span></h2>
-            <p>Установите соединение для перехвата контроля.</p>
             <div class="code-block" style="margin: 20px 0;"><span id="hack-timer">10.0</span> сек</div>
             <input type="text" id="hack-input" class="glass-input" placeholder="Введите ключ..." style="margin-bottom: 5px;">
             <button id="cancel-hack-btn" class="glass-btn" style="background: transparent; color: var(--color-text); border-color: var(--color-text);">Отмена</button>
