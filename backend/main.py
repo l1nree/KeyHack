@@ -43,29 +43,31 @@ async def websocket_endpoint(websocket: WebSocket):
         logger.error(f"Ошибка WebSocket: {e}")
 
 #Проверка обращения к Redis и SQLite
+# Добавьте второй декоратор над той же функцией
+
+@app.get("/api/status")
+async def status():
+    return {"status": "ok", "service": "KeyHack Backend"}
+
 @app.get("/db-status")
 async def check_db_status():
     response = {"sqlite": "disconnected", "redis": "disconnected"}
     
-    # Проверка SQLite
     try:
         sqlite_db = get_sqlite()
-        # Выполняем простейший запрос, чтобы убедиться, что БД отвечает
         async with sqlite_db.execute("SELECT 1") as cursor:
             await cursor.fetchone()
         response["sqlite"] = "ok"
     except Exception as e:
         response["sqlite"] = f"error: {str(e)}"
-        logger.error(f"Ошибка проверки SQLite: {e}")
+        logger.error(f"Ошибка SQLite: {e}")
 
-    # Проверка Redis
     try:
         redis_db = get_redis()
-        # Отправляем ping
         await redis_db.ping()
         response["redis"] = "ok"
     except Exception as e:
         response["redis"] = f"error: {str(e)}"
-        logger.error(f"Ошибка проверки Redis: {e}")
+        logger.error(f"Ошибка Redis: {e}")
 
     return response
