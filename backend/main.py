@@ -1,6 +1,8 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from contextlib import asynccontextmanager
 import logging
+import uuid
+from pydantic import BaseModel
 
 from database import connect_dbs, close_dbs, get_sqlite, get_redis
 
@@ -21,6 +23,31 @@ app = FastAPI(lifespan=lifespan)
 @app.get("/")
 async def root():
     return {"status": "FastAPI Server is running!"}
+
+# Модели данных для регистрации
+class RegisterRequest(BaseModel):
+    nickname: str
+
+class RegisterResponse(BaseModel):
+    player_id: str
+    nickname: str
+
+@app.post("/api/register", response_model=RegisterResponse)
+async def register_player(req: RegisterRequest):
+    player_id = str(uuid.uuid4())
+    db = get_sqlite()
+    
+    try:
+        await db.execute(
+            "INSERT INTO players (id, nickname) VALUES (?, ?)",
+            (player_id, req.nickname)
+        )
+        await db.commit()
+        logger.info(f"Зарегистрирован новый игрок: {req.nickname} ({player_id})")
+        return RegisterResponse(player_id=player_id, nickname=req.nickname)
+    except Exception as e:
+        logger.error(f"Ошибка при регистрации игрока: {e}")
+        return {"error": str(e)}
 
 # Убедитесь, что здесь НЕТ слэша на конце!
 @app.websocket("/ws")

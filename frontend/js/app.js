@@ -37,3 +37,65 @@ function gameLoop() {
 }
 
 requestAnimationFrame(gameLoop);
+
+document.addEventListener("DOMContentLoaded", () => {
+  const authScreen = document.getElementById("auth-screen");
+  const gameScreen = document.getElementById("game-screen");
+  const registerBtn = document.getElementById("register-btn");
+  const nicknameInput = document.getElementById("nickname-input");
+
+  const playerNameDisplay = document.getElementById("player-name-display");
+  const playerIdDisplay = document.getElementById("player-id-display");
+
+  // Проверяем, есть ли уже сохраненный аккаунт
+  const savedPlayerId = localStorage.getItem("keyhack_player_id");
+  const savedNickname = localStorage.getItem("keyhack_nickname");
+
+  if (savedPlayerId && savedNickname) {
+    showGameScreen(savedPlayerId, savedNickname);
+  }
+
+  registerBtn.addEventListener("click", async () => {
+    const nickname = nicknameInput.value.trim();
+    if (!nickname) {
+      alert("Введите никнейм");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ nickname: nickname }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        // Сохраняем данные локально
+        localStorage.setItem("keyhack_player_id", data.player_id);
+        localStorage.setItem("keyhack_nickname", data.nickname);
+
+        showGameScreen(data.player_id, data.nickname);
+      } else {
+        alert("Ошибка при регистрации");
+      }
+    } catch (error) {
+      console.error("Ошибка сети:", error);
+      alert("Не удалось подключиться к серверу");
+    }
+  });
+
+  function showGameScreen(playerId, nickname) {
+    authScreen.style.display = "none";
+    gameScreen.style.display = "block";
+
+    playerNameDisplay.textContent = nickname;
+    playerIdDisplay.textContent = playerId;
+
+    // Здесь мы в будущем будем передавать playerId при подключении к WebSocket
+    // client.connect(playerId);
+  }
+});
