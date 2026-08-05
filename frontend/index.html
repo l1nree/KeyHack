@@ -29,7 +29,23 @@
             <div class="code-block">IP: 192.168.1.42</div>
         </div>
 
+        
+        <div id="hack-modal" class="glass-panel" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 400px; text-align: center;">
+            <h2 style="color: var(--color-danger);">ВТОРЖЕНИЕ В УЗЕЛ <span id="target-node-id">0</span></h2>
+            <p>Установите соединение для перехвата контроля.</p>
+                
+            <div class="code-block" style="margin: 20px 0;">
+                    <span id="hack-timer">10.0</span> сек
+            </div>
+
+            <!-- Здесь позже появится логика самой мини-игры (например, ввод пароля) -->
+            <input type="text" id="hack-input" placeholder="Введите ключ..." style="width: 100%; padding: 10px; box-sizing: border-box; background: rgba(0,0,0,0.5); border: 1px solid var(--color-primary); color: white; font-family: var(--font-code); border-radius: 4px;">
+                
+            <button id="cancel-hack-btn" style="margin-top: 15px; padding: 10px 20px; background: transparent; border: 1px solid var(--color-text); color: var(--color-text); cursor: pointer; border-radius: 4px;">Отмена</button>
+        </div>
+
     </div>
+
 
     <!-- Подключаем главный скрипт как модуль (точка входа) -->
     <script type="module" src="./js/app.js"></script>

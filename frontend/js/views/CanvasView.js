@@ -4,11 +4,19 @@ class CanvasView {
         this.canvas = document.getElementById(canvasId);
         this.ctx = this.canvas.getContext('2d');
         
-        // Автоматически подстраиваем размер холста под окно браузера
+        // Задаем стартовые размеры при загрузке страницы
+        this.resize();
+
+        // ВОТ ЗДЕСЬ: Возвращаем слушателя, чтобы интерфейс снова стал адаптивным
+        window.addEventListener('resize', () => this.resize());
+    }
+
+    resize() {
+        // Обновляем физические размеры холста до текущих размеров окна
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
         
-        // Вычисляем центр координат (наш Core Server будет здесь)
+        // Вычисляем новую центральную точку
         this.centerX = this.canvas.width / 2;
         this.centerY = this.canvas.height / 2;
     }
