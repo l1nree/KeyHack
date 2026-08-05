@@ -40,8 +40,14 @@ document.addEventListener("DOMContentLoaded", () => {
   let isDevModeUnlocked = false; // Блокировка кликов для админа
 
   // Перехватываем команду от панели разработчика
-  document.addEventListener("devModeActivateCanvas", () => {
-    isDevModeUnlocked = true;
+  document.addEventListener("devModeActivateCanvas", (event) => {
+    // Включаем флаг активности игры
+    isGameActive = true; 
+
+    // Переключаем сетевой контроллер на использование mockClient при наличии
+    if (event.detail && event.detail.mockClient) {
+        networkController.setClient(event.detail.mockClient);
+    }
   });
 
   // --- 2. Инициализация игры ---

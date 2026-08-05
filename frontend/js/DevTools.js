@@ -1,4 +1,9 @@
 export class DevTools {
+  /**
+   * @param {Object} netClient - Клиент для взаимодействия с реальным сервером
+   * @param {Object} mockClient - Локальный тестовый клиент
+   * @param {HTMLCanvasElement} gameCanvas - Элемент canvas игрового поля
+   */
   constructor(netClient, mockClient, gameCanvas) {
     this.netClient = netClient;
     this.mockClient = mockClient;
@@ -6,6 +11,9 @@ export class DevTools {
     this.panel = null;
   }
 
+  /**
+   * Инициализация панели разработчика и привязка обработчиков событий
+   */
   init() {
     // Создаем панель разработчика
     this.panel = document.createElement("div");
@@ -46,28 +54,9 @@ export class DevTools {
 
     // --- ЛОГИКА КНОПОК ПУЛЬТА ---
 
-    // 1. Показать Игровое поле
+    // 1. Активация игрового поля в безопасном тестовом режиме
     document.getElementById("dev-btn-canvas").addEventListener("click", () => {
-      if (this.gameCanvas) {
-        // Прячем абсолютно все обычные экраны (меню регистрации, лобби, меню игрока)
-        const screens = ["auth-screen", "game-screen", "lobby-screen"];
-        screens.forEach((id) => {
-          const el = document.getElementById(id);
-          if (el) el.style.display = "none";
-        });
-
-        // Включаем показ холста на весь экран
-        this.gameCanvas.style.display = "block";
-
-        // Чтобы клики по холсту работали (отключение блокировки isGameActive)
-        // Мы отправляем кастомное событие, которое перехватит app.js
-        document.dispatchEvent(new CustomEvent("devModeActivateCanvas"));
-
-        // Запускаем локальную анимацию сетки
-        this.mockClient.connect();
-
-        this.log("Игровое поле активировано. Блокировки сняты.");
-      }
+      this.activateTestMode();
     });
 
     // 2. Очистить логи
@@ -77,19 +66,68 @@ export class DevTools {
       this.log("Логи очищены.");
     });
 
-    // 3. Очистить кэш (Выйти)
+    // 3. Очистить кэш и перезагрузить
     document.getElementById("dev-btn-reset").addEventListener("click", () => {
       this.log("Сброс админ-сессии...");
       localStorage.clear();
       location.reload();
     });
 
-    // Скрыть саму панель (чтобы не мешала смотреть)
+    // Скрыть саму панель
     document.getElementById("dev-close").addEventListener("click", () => {
       this.panel.style.display = "none";
     });
   }
 
+  /**
+   * Безопасный запуск тестового режима игрового поля
+   */
+  activateTestMode() {
+    if (!this.gameCanvas) {
+      this.log("Ошибка: холст (gameCanvas) не найден.");
+      return;
+    }
+
+    // 1. Скрываем только экраны входа и лобби. Экран 'game-screen' должен быть виден,
+    // чтобы интерфейс задач и захвата узлов не блокировался.
+    const screensToHide = ["auth-screen", "lobby-screen"];
+    screensToHide.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = "none";
+    });
+
+    // Отображаем основной игровой экран
+    const gameScreen = document.getElementById("game-screen");
+    if (gameScreen) {
+      gameScreen.style.display = "block";
+    }
+
+    // Включаем отображение холста
+    this.gameCanvas.style.display = "block";
+
+    // 2. Подключаем mockClient для имитации работы бэкенда
+    this.mockClient.connect();
+
+    // 3. Отправляем событие активации с передачей mockClient в подробностях (detail)
+    document.dispatchEvent(
+      new CustomEvent("devModeActivateCanvas", {
+        detail: {
+          mockClient: this.mockClient,
+          useMock: true,
+        },
+      })
+    );
+
+    // 4. Обновляем размер холста для корректной обработки координат клика
+    window.dispatchEvent(new Event("resize"));
+
+    this.log("Игровое поле активировано. Тестовый режим включен, интерфейс активен.");
+  }
+
+  /**
+   * Вывод сообщений в консоль панели разработчика
+   * @param {string} message - Текст сообщения
+   */
   log(message) {
     if (!this.panel) return;
     const logBox = document.getElementById("dev-logs");
