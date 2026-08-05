@@ -30,5 +30,41 @@
     <!-- Подключаем главный скрипт как модуль -->
     <script type="module" src="./js/app.js"></script>
     
+<!-- === БЛОК ТЕСТИРОВАНИЯ WEBSOCKET (ФАЗА 1) === -->
+<!-- Его можно будет удалить, когда перейдем к реальной игре -->
+<div style="position: fixed; bottom: 10px; right: 10px; background: rgba(0,0,0,0.8); color: lime; padding: 15px; border-radius: 8px; font-family: monospace; z-index: 9999;">
+    <div>Статус WS: <span id="ws-status" style="color: yellow;">Подключение...</span></div>
+    <button onclick="testPing()" style="margin: 5px 0; background: #333; color: lime; border: 1px solid lime; cursor: pointer;">Отправить Ping</button>
+    <div>Ответ: <span id="ws-response">Нет</span></div>
+</div>
+
+<script>
+    // Подключаемся к вашему эндпоинту /ws
+    const ws = new WebSocket("wss://keyhack.albov.net/ws");
+
+    ws.onopen = () => {
+        document.getElementById("ws-status").innerText = "Подключено ✓";
+    };
+
+    ws.onmessage = (event) => {
+        // Когда сервер пришлет ответ "Эхо сервера: ...", выводим его
+        document.getElementById("ws-response").innerText = event.data;
+    };
+
+    ws.onerror = (err) => {
+        document.getElementById("ws-status").innerText = "Ошибка ✗";
+        document.getElementById("ws-status").style.color = "red";
+    };
+
+    function testPing() {
+        if (ws.readyState === WebSocket.OPEN) {
+            ws.send("Ping от клиента!");
+        } else {
+            alert("Соединение еще не установлено.");
+        }
+    }
+</script>
+<!-- === КОНЕЦ БЛОКА ТЕСТИРОВАНИЯ === -->
+
 </body>
 </html>
