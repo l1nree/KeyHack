@@ -39,30 +39,56 @@ class CanvasView {
         this.ctx.strokeStyle = '#1E293B'; 
         this.ctx.lineWidth = 2;
 
-        // 1. Рисуем орбитальное кольцо (соединяем узлы с 1 по 6)[cite: 1]
-        this.ctx.beginPath();
-        for (let i = 1; i < gameState.nodes.length; i++) {
-            const { x, y } = this.getCartesian(gameState.nodes[i].radius, gameState.nodes[i].angle);
-            if (i === 1) {
-                this.ctx.moveTo(x, y); // Ставим кисть на первый узел
-            } else {
-                this.ctx.lineTo(x, y); // Ведем линию к следующим
-            }
-        }
-        this.ctx.closePath(); // Замыкаем кольцо от последнего узла обратно к первому
-        this.ctx.stroke(); // Отрисовываем контур
+        // Шаг 1: Группируем узлы (как в Python словарях)
+        const rings = {}; // Для концентрических колец (группируем по радиусу)
+        const rays = {};  // Для радиальных лучей (группируем по углу)
 
-        // 2. Рисуем лучи от центрального Core Server к орбите[cite: 1]
+        for (let i = 1; i < gameState.nodes.length; i++) {
+            const node = gameState.nodes[i];
+            
+            // Если ключа еще нет — создаем пустой массив, затем добавляем узел
+            if (!rings[node.radius]) rings[node.radius] = [];
+            rings[node.radius].push(node);
+
+            if (!rays[node.angle]) rays[node.angle] = [];
+            rays[node.angle].push(node);
+        }
+
+        // Шаг 2: Рисуем независимые кольца (орбиты)
+        for (const radius in rings) {
+            this.ctx.beginPath();
+            const orbitNodes = rings[radius];
+            for (let j = 0; j < orbitNodes.length; j++) {
+                const { x, y } = this.getCartesian(orbitNodes[j].radius, orbitNodes[j].angle);
+                if (j === 0) {
+                    this.ctx.moveTo(x, y);
+                } else {
+                    this.ctx.lineTo(x, y);
+                }
+            }
+            this.ctx.closePath(); // Замыкаем каждое кольцо отдельно!
+            this.ctx.stroke();
+        }
+
+        // Шаг 3: Рисуем лучи от центрального сервера
         const core = gameState.nodes[0];
         const { x: cx, y: cy } = this.getCartesian(core.radius, core.angle);
-        
-        this.ctx.beginPath();
-        for (let i = 1; i < gameState.nodes.length; i++) {
-            const { x, y } = this.getCartesian(gameState.nodes[i].radius, gameState.nodes[i].angle);
-            this.ctx.moveTo(cx, cy); // Возвращаемся в центр
-            this.ctx.lineTo(x, y);   // Проводим луч к узлу
+
+        for (const angle in rays) {
+            const angleNodes = rays[angle];
+            
+            // Находим самый дальний узел на этой линии (максимальный радиус)
+            const outerNode = angleNodes.reduce((prev, curr) => 
+                prev.radius > curr.radius ? prev : curr
+            );
+            
+            const { x, y } = this.getCartesian(outerNode.radius, outerNode.angle);
+            
+            this.ctx.beginPath();
+            this.ctx.moveTo(cx, cy); // Ставим кисть в центр
+            this.ctx.lineTo(x, y);   // Проводим линию до самого дальнего узла орбиты
+            this.ctx.stroke();
         }
-        this.ctx.stroke();
 
         for (const node of gameState.nodes) {
             const { x, y } = this.getCartesian(node.radius, node.angle);

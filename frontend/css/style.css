@@ -1,0 +1,80 @@
+:root {
+    /* Цветовая палитра */
+    --color-bg: #0F172A; 
+    --color-primary: #4F46E5;
+    --color-success: #10B981;
+    --color-danger: #E11D48;
+    --color-text: #F8FAFC;
+
+    /* Типографика */
+    --font-ui: 'Inter', sans-serif;
+    --font-code: 'JetBrains Mono', monospace;
+}
+
+/* Базовый сброс и настройка слоев */
+body, html {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-ui);
+}
+
+/* Canvas лежит на самом дне (z-index: 1) */
+#gameCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}
+
+/* Слой UI парит поверх Canvas (z-index: 10) */
+#ui-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    pointer-events: none; /* Пропускаем клики сквозь пустые области UI к Canvas */
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+/* Эффект Glassmorphism */
+.glass-panel {
+    pointer-events: auto; /* Включаем клики обратно для самих панелей */
+    
+    /* Полупрозрачный фон и размытие */
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(12px);
+    
+    /* Мягкие углы и тень для объема */
+    border-radius: 16px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    
+    padding: 20px;
+    width: 300px;
+    border: 1px solid rgba(255, 255, 255, 0.1); /* Легкий блик на границе */
+}
+
+/* Стилизация текста внутри панели */
+.glass-panel h2 {
+    margin: 0 0 10px 0;
+    font-size: 24px;
+}
+
+.status-ok {
+    color: var(--color-success);
+}
+
+/* Применение моноширинного шрифта для логов */
+.code-block {
+    font-family: var(--font-code);
+    background: rgba(0, 0, 0, 0.3);
+    padding: 10px;
+    border-radius: 8px;
+    margin-top: 15px;
+    color: var(--color-primary);
+}

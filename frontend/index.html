@@ -3,31 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <title>Война серверов: Битва за узлы</title>
-    
-    <!-- Подключаем шрифты из дизайн-системы[cite: 1] -->
+
+    <!-- Заглушка для favicon, чтобы избежать ошибки 404 в консоли -->
+    <link rel="icon" href="data:,">
+
+    <!-- Подключаем шрифты из дизайн-системы: Inter (UI) и JetBrains Mono (Код) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-    
-    <style>
-        /* Убираем отступы браузера по умолчанию, чтобы canvas занял весь экран */
-        body, html {
-            margin: 0;
-            padding: 0;
-            overflow: hidden; /* Убираем скроллбары */
-        }
-        
-        /* Задаем базовые шрифты для будущего UI[cite: 1] */
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-    </style>
+
+    <!-- Подключаем наш файл стилей (Modern FinTech Dashboard)[cite: 1] -->
+    <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
 
-    <!-- Наш холст -->
+    <!-- Слой 1: Наш холст с радиальной сеткой (находится на заднем плане) -->
     <canvas id="gameCanvas"></canvas>
 
-    <!-- Подключаем главный скрипт как модуль -->
+    <!-- Слой 2: Интерфейс Glassmorphism (парит поверх холста)[cite: 1] -->
+    <div id="ui-layer">
+        
+        <!-- Тестовая панель дашборда игрока -->
+        <div class="glass-panel player-dashboard">
+            <h2>Player_1</h2>
+            <p>Статус: <span class="status-ok">Подключен</span></p>
+            <div class="code-block">IP: 192.168.1.42</div>
+        </div>
+
+    </div>
+
+    <!-- Подключаем главный скрипт как модуль (точка входа) -->
     <script type="module" src="./js/app.js"></script>
     
 </body>

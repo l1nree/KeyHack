@@ -22,21 +22,48 @@ class MockClient {
 
     generateInitialState() {
         const nodes = [];
+        // Центральный Core Server
         nodes.push({ id: 0, radius: 0, angle: 0, owner: 'neutral' });
 
-        const nodeCount = 6;
-        const orbitRadius = 150; 
+        const orbits = 3; // Количество концентрических колец
+        const baseRadius = 80; // Расстояние (шаг) между кольцами
+        const nodesPerOrbit = 8; // Количество серверов на каждом кольце
 
-        for (let i = 0; i < nodeCount; i++) {
-            const angle = (360 / nodeCount) * i;
-            let nodeOwner = 'neutral';
+        let currentId = 1; // Глобальный счетчик ID для узлов
+
+        // 1. Внешний цикл: перебираем номера орбит от 1 до 3
+        for (let r = 1; r <= orbits; r++) {
             
-            // Расставляем двух игроков симметрично
-            if (i === 0) nodeOwner = 'player1';
-            if (i === nodeCount / 2) nodeOwner = 'player2'; 
-            
-            nodes.push({ id: i + 1, radius: orbitRadius, angle, owner: nodeOwner });
+            // 2. Внутренний цикл: расставляем 8 узлов на текущей орбите
+            for (let i = 0; i < nodesPerOrbit; i++) {
+                
+                // Вычисляем геометрию
+                const currentRadius = r * baseRadius;
+                const angle = (360 / nodesPerOrbit) * i;
+                
+                let nodeOwner = 'neutral';
+                
+                // Спавним игроков только на самой внешней орбите (когда r === orbits)
+                if (r === orbits && i === 0) {
+                    nodeOwner = 'player1';
+                }
+                // i === 4 (половина от 8), расстановка симметрично на противоположной стороне
+                if (r === orbits && i === nodesPerOrbit / 2) {
+                    nodeOwner = 'player2';
+                }
+
+                // Добавляем готовый узел в массив
+                nodes.push({ 
+                    id: currentId, 
+                    radius: currentRadius, 
+                    angle: angle, 
+                    owner: nodeOwner 
+                });
+                
+                currentId++; // Увеличиваем ID для следующего узла
+            }
         }
+
         return { nodes: nodes };
     }
 
