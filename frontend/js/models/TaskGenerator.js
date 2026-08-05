@@ -1,6 +1,5 @@
 class TaskGenerator {
     constructor() {
-        // Пул данных для фишинга (можно будет легко пополнять)
         this.phishingDomains = [
             { safe: 'github.com', fake: 'githuh.com' },
             { safe: 'microsoft.com', fake: 'rnicrosoft.com' },
@@ -17,39 +16,58 @@ class TaskGenerator {
     }
 
     generateEasyTask() {
-        // Временно жестко задаем 0, чтобы всегда тестировать только фишинг.
-        // Когда напишем шифр Цезаря, заменим на: Math.floor(Math.random() * 2)
-        const taskType = 0; 
+        // Теперь генератор бросает монетку: 0 - фишинг, 1 - криптография
+        const taskType = Math.floor(Math.random() * 2); 
 
         if (taskType === 0) {
             return this.generatePhishingTask();
         } else {
-            // Заглушка для будущей криптографии
-            return null;
+            return this.generateCaesarTask();
         }
     }
 
     generatePhishingTask() {
-        // 1. Получаем случайный индекс от 0 до длины массива
         const randomIndex = Math.floor(Math.random() * this.phishingDomains.length);
         const pair = this.phishingDomains[randomIndex];
 
-        // 2. Создаем массив с вариантами ответов
         let options = [pair.safe, pair.fake];
-
-        // 3. Бросаем "виртуальную монетку" для перемешивания.
-        // Math.random() выдает число от 0 до 1. Если оно больше 0.5 — меняем элементы местами.
         if (Math.random() > 0.5) {
             options.reverse();
         }
 
-        // 4. Возвращаем полностью готовый объект (payload) для интерфейса
         return {
             type: 'phishing',
             difficulty: 'easy',
             question: "Критическая угроза! Какая из этих ссылок безопасна?",
             options: options,
             correctAnswer: pair.safe
+        };
+    }
+
+    // НОВЫЙ МЕТОД: Генерация шифра Цезаря
+    generateCaesarTask() {
+        const word = this.cryptoWords[Math.floor(Math.random() * this.cryptoWords.length)];
+        const shift = 1; // Задаем сдвиг Цезаря +1
+        let encrypted = "";
+        
+        for (let i = 0; i < word.length; i++) {
+            const charCode = word.charCodeAt(i);
+            
+            // Если символ — заглавная английская буква (коды ASCII от 65 до 90)
+            if (charCode >= 65 && charCode <= 90) {
+                // Вычисляем новый символ с учетом закольцованности алфавита
+                encrypted += String.fromCharCode(((charCode - 65 + shift) % 26) + 65);
+            } else {
+                encrypted += word[i];
+            }
+        }
+
+        return {
+            type: 'caesar',
+            difficulty: 'easy',
+            question: `Расшифруйте перехваченный пакет (Сдвиг +${shift}):`,
+            encryptedWord: encrypted,
+            correctAnswer: word // Игрок должен ввести оригинальное слово
         };
     }
 }
