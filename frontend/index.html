@@ -113,11 +113,16 @@
         </div>
         
         <!-- МОДАЛЬНОЕ ОКНО ВЗЛОМА (Скрыто до начала игры) -->
-        <div id="hack-modal" class="glass-panel" style="display: none; position: absolute; top: 10%; left: 50%; transform: translateX(-50%); width: 400px; text-align: center;">
+        <div id="hack-modal" class="glass-panel" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 400px; text-align: center;">
             <h2 style="color: var(--color-danger, #ff4444);">ВТОРЖЕНИЕ В УЗЕЛ <span id="target-node-id">0</span></h2>
+            <p>Установите соединение для перехвата контроля.</p>
+            
             <div class="code-block" style="margin: 20px 0;">
                 <span id="hack-timer">10.0</span> сек
             </div>
+
+            <input type="text" id="hack-input" class="glass-input" placeholder="Введите ключ..." style="margin-bottom: 5px;">
+            <button id="cancel-hack-btn" class="glass-btn" style="background: transparent; color: var(--color-text); border-color: var(--color-text);">Отмена</button>
         </div>
 
     </div>
