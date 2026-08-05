@@ -4,7 +4,6 @@ import logging
 
 from database import connect_dbs, close_dbs, get_sqlite, get_redis
 
-
 # Включаем логирование
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -19,11 +18,9 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-
 @app.get("/")
 async def root():
     return {"status": "FastAPI Server is running!"}
-
 
 # Убедитесь, что здесь НЕТ слэша на конце!
 @app.websocket("/ws")
@@ -42,13 +39,15 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         logger.error(f"Ошибка WebSocket: {e}")
 
-#Проверка обращения к Redis и SQLite
-# Добавьте второй декоратор над той же функцией
 
+# Проверка состояния сервера
 @app.get("/api/status")
 async def status():
     return {"status": "ok", "service": "KeyHack Backend"}
 
+# Проверка обращения к Redis и SQLite
+# Двойной декоратор с правильными путями
+@app.get("/api/db-status")
 @app.get("/db-status")
 async def check_db_status():
     response = {"sqlite": "disconnected", "redis": "disconnected"}
