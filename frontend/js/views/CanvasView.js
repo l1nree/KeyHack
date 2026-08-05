@@ -1,16 +1,5 @@
 class CanvasView {
 
-    constructor(canvasId) {
-        this.canvas = document.getElementById(canvasId);
-        this.ctx = this.canvas.getContext('2d');
-        
-        // Задаем стартовые размеры при загрузке страницы
-        this.resize();
-
-        // ВОТ ЗДЕСЬ: Возвращаем слушателя, чтобы интерфейс снова стал адаптивным
-        window.addEventListener('resize', () => this.resize());
-    }
-
     resize() {
         // Обновляем физические размеры холста до текущих размеров окна
         this.canvas.width = window.innerWidth;
