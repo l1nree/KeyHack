@@ -9,6 +9,7 @@ import logging
 
 from database import connect_dbs, close_dbs, get_sqlite, get_redis
 
+# Настройка логов
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,6 @@ class ConnectionManager:
         if player_id in self.active_connections:
             await self.active_connections[player_id].send_text(json.dumps(message))
 
-    # НОВЫЙ МЕТОД: Рассылка только определенным игрокам (в одном лобби)
     async def broadcast_to_players(self, message: dict, player_ids: list):
         for pid in player_ids:
             if pid in self.active_connections:
@@ -111,14 +111,11 @@ async def websocket_endpoint(websocket: WebSocket, player_id: str = Query(...)):
                     }
                 }
                 await redis_db.set(f"lobby:{lobby_code}", json.dumps(lobby_data), ex=3600)
-                
-                # Отправляем создателю обновленное состояние лобби
                 await manager.send_personal_message({
                     "type": "lobby_update",
-                    "payload": {"lobby_code": lobby_code, "lobby_data": lobby_data, "message": "Лобби создано!"}
+                    "payload": {"lobby_code": lobby_code, "lobby_data": lobby_data}
                 }, player_id)
                 
-            # --- НОВАЯ ЛОГИКА: ПОДКЛЮЧЕНИЕ К ЛОББИ ---
             elif msg_type == "join_lobby":
                 lobby_code = payload.get("lobby_code", "").upper()
                 lobby_key = f"lobby:{lobby_code}"
@@ -138,18 +135,51 @@ async def websocket_endpoint(websocket: WebSocket, player_id: str = Query(...)):
                     await manager.send_personal_message({"type": "error", "payload": {"message": "Сессия заполнена"}}, player_id)
                     continue
                     
-                # Добавляем игрока в лобби
                 if player_id not in lobby_data["players"]:
                     lobby_data["players"][player_id] = {"nickname": nickname, "is_ready": False}
                     await redis_db.set(lobby_key, json.dumps(lobby_data), ex=3600)
                 
-                # Рассылаем обновленный список ВСЕМ участникам лобби
                 player_ids = list(lobby_data["players"].keys())
                 await manager.broadcast_to_players({
                     "type": "lobby_update",
-                    "payload": {"lobby_code": lobby_code, "lobby_data": lobby_data, "message": f"{nickname} присоединился!"}
+                    "payload": {"lobby_code": lobby_code, "lobby_data": lobby_data}
                 }, player_ids)
                 
+            # --- ШАГ 5: ИЗМЕНЕНИЕ ГОТОВНОСТИ И СТАРТ ---
+            elif msg_type == "set_ready":
+                lobby_code = payload.get("lobby_code", "").upper()
+                is_ready = payload.get("is_ready", True)
+                
+                lobby_key = f"lobby:{lobby_code}"
+                lobby_json = await redis_db.get(lobby_key)
+                
+                if lobby_json:
+                    lobby_data = json.loads(lobby_json)
+                    if player_id in lobby_data["players"]:
+                        # Обновляем статус готовности игрока
+                        lobby_data["players"][player_id]["is_ready"] = is_ready
+                        await redis_db.set(lobby_key, json.dumps(lobby_data), ex=3600)
+                        
+                        player_ids = list(lobby_data["players"].keys())
+                        
+                        # Рассылаем всем новый статус лобби
+                        await manager.broadcast_to_players({
+                            "type": "lobby_update",
+                            "payload": {"lobby_code": lobby_code, "lobby_data": lobby_data}
+                        }, player_ids)
+                        
+                        # ПРОВЕРКА СТАРТА: Все готовы и игроков минимум 2
+                        all_ready = all(p["is_ready"] for p in lobby_data["players"].values())
+                        if all_ready and len(lobby_data["players"]) >= 2:
+                            lobby_data["status"] = "playing"
+                            await redis_db.set(lobby_key, json.dumps(lobby_data), ex=3600)
+                            
+                            # Рассылаем команду начала игры
+                            await manager.broadcast_to_players({
+                                "type": "match_start",
+                                "payload": {"message": "ВНИМАНИЕ! Соединение установлено. Начинаем взлом!"}
+                            }, player_ids)
+
     except WebSocketDisconnect:
         manager.disconnect(player_id)
     except Exception as e:

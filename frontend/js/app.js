@@ -19,6 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const createLobbyBtn = document.getElementById("create-lobby-btn");
   const joinLobbyBtn = document.getElementById("join-lobby-btn");
   const joinLobbyInput = document.getElementById("join-lobby-input");
+  const readyBtn = document.getElementById("ready-btn");
 
   const playerNameDisplay = document.getElementById("player-name-display");
   const playerIdDisplay = document.getElementById("player-id-display");
@@ -27,17 +28,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const lobbyCount = document.getElementById("lobby-count");
   const lobbyPlayersList = document.getElementById("lobby-players-list");
 
+  // Глобальные переменные сессии
+  let currentPlayerId = null;
+  let currentLobbyCode = null;
+  let isPlayerReady = false;
+
   // --- 2. Инициализация игры (Графика и Логика) ---
   const gameModel = new GameReplica("player1");
   const canvasView = new CanvasView("gameCanvas");
   const uiView = new UIView();
   const taskGenerator = new TaskGenerator();
 
-  // Инициализируем контроллер ввода
   const inputController = new InputController(canvasView, gameModel, (node) => {
-    console.log(
-      `app.js принял сигнал! Открываем интерфейс взлома для узла: ${node.id}`,
-    );
     const task = taskGenerator.getTask("easy");
     uiView.showHackModal(node, task);
   });
@@ -50,34 +52,27 @@ document.addEventListener("DOMContentLoaded", () => {
     canvasView.render(gameModel.state);
     requestAnimationFrame(gameLoop);
   }
-
-  // Запускаем графический цикл
   requestAnimationFrame(gameLoop);
 
   // --- 3. Инициализация сети ---
   const netClient = new NetworkClient("wss://keyhack.albov.net/ws");
 
-  // Обработка сообщений от сервера
   netClient.onMessage((data) => {
     if (data.type === "pong") {
       alert(data.payload.message);
-    } else if (data.type === "lobby_created" || data.type === "lobby_update") {
-      // Пришло обновление лобби (кто-то зашел/создал)
+    } else if (data.type === "lobby_update") {
       const lobbyData = data.payload.lobby_data;
+      currentLobbyCode = data.payload.lobby_code;
 
-      // Прячем меню, показываем лобби
       if (gameScreen) gameScreen.style.display = "none";
 
       if (lobbyScreen) {
         lobbyScreen.style.display = "block";
-
-        // Заполняем данные
-        lobbyCodeDisplay.textContent = data.payload.lobby_code;
+        lobbyCodeDisplay.textContent = currentLobbyCode;
 
         const players = Object.values(lobbyData.players);
         lobbyCount.textContent = players.length;
 
-        // Отрисовываем список игроков
         lobbyPlayersList.innerHTML = "";
         players.forEach((p) => {
           const statusColor = p.is_ready ? "lime" : "gray";
@@ -90,13 +85,24 @@ document.addEventListener("DOMContentLoaded", () => {
                         </div>
                     `;
         });
-      } else {
-        alert(`Сессия! Ваш КОД лобби: ${data.payload.lobby_code}`);
-      }
 
-      if (data.payload.message) {
-        console.log(data.payload.message);
+        // Синхронизируем состояние кнопки готовности
+        if (currentPlayerId && lobbyData.players[currentPlayerId]) {
+          isPlayerReady = lobbyData.players[currentPlayerId].is_ready;
+          if (isPlayerReady) {
+            readyBtn.textContent = "ОТМЕНИТЬ ГОТОВНОСТЬ";
+            readyBtn.style.background = "rgba(0, 255, 0, 0.2)";
+          } else {
+            readyBtn.textContent = "ПОДТВЕРДИТЬ ГОТОВНОСТЬ";
+            readyBtn.style.background = "rgba(0, 255, 204, 0.1)";
+          }
+        }
       }
+    } else if (data.type === "match_start") {
+      // ИГРА НАЧАЛАСЬ
+      if (lobbyScreen) lobbyScreen.style.display = "none";
+      alert(data.payload.message);
+      // Тут мы открываем саму карту (она уже на фоне, так что мы просто убрали лишние меню)
     } else if (data.type === "error") {
       alert("Ошибка: " + data.payload.message);
     }
@@ -126,6 +132,17 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  if (readyBtn) {
+    readyBtn.addEventListener("click", () => {
+      if (!currentLobbyCode) return;
+      // Отправляем инвертированное состояние на сервер
+      netClient.sendAction("set_ready", {
+        lobby_code: currentLobbyCode,
+        is_ready: !isPlayerReady,
+      });
+    });
+  }
+
   const mockClient = new MockClient(handleStateReceived);
 
   // --- 4. Авторизация ---
@@ -133,6 +150,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const savedNickname = localStorage.getItem("keyhack_nickname");
 
   if (savedPlayerId && savedNickname) {
+    currentPlayerId = savedPlayerId;
     showGameScreen(savedPlayerId, savedNickname);
   }
 
@@ -158,6 +176,7 @@ document.addEventListener("DOMContentLoaded", () => {
           const data = await response.json();
           localStorage.setItem("keyhack_player_id", data.player_id);
           localStorage.setItem("keyhack_nickname", data.nickname);
+          currentPlayerId = data.player_id;
           showGameScreen(data.player_id, data.nickname);
         } else {
           alert("Ошибка при регистрации.");
@@ -186,9 +205,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       uiView.updateDashboard("10.0.0.99");
-    } catch (e) {
-      console.warn("Ошибка обновления дашборда:", e);
-    }
+    } catch (e) {}
 
     netClient.connect(playerId);
     mockClient.connect();
